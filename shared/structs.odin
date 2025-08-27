@@ -3,16 +3,36 @@ package gamestate
 import "core:net"
 
 MAX_PLAYERS :: 2
+ID :: u32
+
+PacketType :: enum {
+ EXPLOSION,
+  MAP_CHANGE,
+  HANDSHAKE,
+}
+
+PacketHandShake :: struct {
+  type: PacketType,
+  playerID: ID
+}
+PacketPlayerID :: struct {
+  type: PacketType,
+  playerID : ID,
+}
 
 Gamestate :: struct {
   players : [MAX_PLAYERS]Player,
-  paused : bool,
-  world_health : int,
   time : int,
 }
 
 Player :: struct {
-  udp_endpoint : net.Endpoint,
+  udpEndpoint : net.Endpoint,
+  tcpSocket : net.TCP_Socket,
+  using playerinfo : PlayerInfo,
+}
+
+PlayerInfo :: struct {
+  id : ID,
   hp : int,
   ammo : int,
   name : string,
