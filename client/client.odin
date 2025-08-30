@@ -11,8 +11,8 @@ import rl "vendor:raylib"
 gamestate: shared.Gamestate
 playerID: shared.ID
 
-player : shared.Player
-velocity : rl.Vector2
+player: shared.Player
+velocity: rl.Vector2
 udp_recv_gamestate :: proc(sock: net.UDP_Socket) {
 	for {
 		gamestate_buf: [size_of(gamestate)]u8
@@ -28,16 +28,41 @@ udp_recv_gamestate :: proc(sock: net.UDP_Socket) {
 
 udp_send_player :: proc(sock: net.UDP_Socket, endpoint: net.Endpoint) {
 	for {
-    updatedData := shared.UpdatePlayerInfo{id=playerID, velocity=velocity}
-		send_buffer: [size_of(updatedData)]u8
-		mem.copy(mem.raw_data(send_buffer[:]), &updatedData, size_of(updatedData))
+    data := shared.NetworkMessage{
+      type = .UPDATE_PLAYER_INFO,
+      data = shared.UpdatePlayerInfo {
+			id       = playerID,
+			velocity = velocity,
+		}}
+	  send_buffer: [size_of(data)]u8
+		mem.copy(mem.raw_data(send_buffer[:]), &data, size_of(data))
 		bytes_sent, err_send := net.send_udp(sock, send_buffer[:], endpoint)
 		if err_send != nil {
 			fmt.println("Failed to send data", err_send)
 		}
-		// fmt.printfln("client sent [ %d bytes ]", bytes_sent)
+    fmt.println("sent player updates")
 		time.sleep(time.Second)
 	}
+}
+udp_send_message :: proc(sock: net.UDP_Socket, endpoint: net.Endpoint, message: string) {
+  for {
+	data := shared.NetworkMessage {
+		type = .CHAT_MESSAGE,
+    data = shared.ChatMessage{
+      id = playerID,
+      message = message,
+    }
+	}
+	send_buffer: [size_of(data)]u8
+	mem.copy(mem.raw_data(send_buffer[:]), &data, size_of(data))
+	bytes_sent, err_send := net.send_udp(sock, send_buffer[:], endpoint)
+	if err_send != nil {
+		fmt.println("Failed to send data", err_send)
+	}
+    fmt.println("sent chat message: ", message)
+	// fmt.printfln("client sent [ %d bytes ]", bytes_sent)
+	time.sleep(time.Second)
+  }
 }
 
 tcp_request_player_id :: proc(tcpSock: net.TCP_Socket) {
@@ -67,10 +92,10 @@ tcp_receive_thread :: proc(sock: net.TCP_Socket) {
 			handshakePacket := shared.PacketHandShake{}
 			mem.copy(&handshakePacket, mem.raw_data(buf[:]), size_of(handshakePacket))
 			playerID = handshakePacket.playerID
-      player.id = playerID
+			player.id = playerID
 			fmt.println("received ID ", playerID)
-    case:
-      fmt.println("default case: ", packetType)
+		case:
+			fmt.println("default case: ", packetType)
 		}
 
 		// case .EXPLOSION:
@@ -82,12 +107,12 @@ tcp_receive_thread :: proc(sock: net.TCP_Socket) {
 	}
 }
 
-update_player_stats :: proc(){
-for{
-    velocity.x += 1
-    velocity.y += 2
-    time.sleep(time.Millisecond * 500)
-  }
+update_player_stats :: proc() {
+	for {
+		velocity.x += 1
+		velocity.y += 2
+		time.sleep(time.Millisecond * 500)
+	}
 }
 
 main :: proc() {
@@ -109,8 +134,9 @@ main :: proc() {
 	defer net.close(udpSock)
 	thread.create_and_start_with_poly_data(tcpSock, tcp_receive_thread)
 	tcp_request_player_id(tcpSock)
-  time.sleep(1*time.Second)
+	time.sleep(1 * time.Second)
 	thread.create_and_start_with_poly_data(udpSock, udp_recv_gamestate)
-	thread.create_and_start_with_poly_data2(udpSock,serverEndpoint, udp_send_player)
-  update_player_stats()
+	thread.create_and_start_with_poly_data2(udpSock, serverEndpoint, udp_send_player)
+	thread.create_and_start_with_poly_data3(udpSock, serverEndpoint,"xdd", udp_send_message)
+	update_player_stats()
 }

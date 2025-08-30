@@ -35,12 +35,12 @@ send_gamestate :: proc(sock: net.UDP_Socket, endpoint: net.Endpoint) {
 }
 udp_recv_player :: proc(sock: net.UDP_Socket) {
 	for {
-    change := shared.UpdatePlayerInfo{}
+		change := shared.UpdatePlayerInfo{}
 		recv_buffer: [size_of(change)]u8
 		bytes_recv, player_endpoint, err_recv := net.recv_udp(sock, recv_buffer[:])
 		if err_recv != nil {
 			fmt.println("Failed to receive data", err_recv)
-			return
+			continue
 		}
 
 		mem.copy(&change, mem.raw_data(recv_buffer[:]), size_of(change))
@@ -48,9 +48,32 @@ udp_recv_player :: proc(sock: net.UDP_Socket) {
 		if change.id in players {
 			player := &players[change.id]
 			player.udpEndpoint = player_endpoint
-      fmt.println(change)
+			fmt.println(change)
 		}
 		time.sleep(time.Second)
+	}
+}
+
+udp_recv :: proc(sock: net.UDP_Socket) {
+	for {
+		data := shared.NetworkMessage{}
+		recv_buffer: [size_of(data)]u8
+		bytes_recv, peerEndpoint, err_recv := net.recv_udp(sock, recv_buffer[:])
+		if err_recv != nil {
+			fmt.println("Failed to receive data", err_recv)
+			continue
+		}
+		mem.copy(&data, mem.raw_data(recv_buffer[:]), size_of(data))
+		#partial switch data.type {
+		case .UPDATE_PLAYER_INFO:
+			fmt.println("update_player_stats")
+      fmt.println(data)
+		case .CHAT_MESSAGE:
+			fmt.println("update chat")
+			fmt.println(data)
+		case:
+			fmt.println("other message: ", data)
+		}
 	}
 }
 
@@ -135,7 +158,8 @@ main :: proc() {
 	thread.create_and_start_with_poly_data(tcpSock, tcp_thread)
 	thread.create_and_start(update_world_state)
 	//udp threads
-	thread.create_and_start_with_poly_data(udpSock, udp_recv_player)
+	// thread.create_and_start_with_poly_data(udpSock, udp_recv_player)
+	thread.create_and_start_with_poly_data(udpSock, udp_recv)
 	thread.create_and_start_with_poly_data2(udpSock, endpoint, send_gamestate)
 	fmt.println("started server at address: ", addrString)
 	for {
