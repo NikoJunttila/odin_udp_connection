@@ -1,6 +1,7 @@
 package gamestate
 
 import "core:net"
+import rl "vendor:raylib"
 
 MAX_PLAYERS :: 2
 ID :: u32
@@ -28,6 +29,7 @@ Gamestate :: struct {
 Player :: struct {
   udpEndpoint : net.Endpoint,
   tcpSocket : net.TCP_Socket,
+  name : string,
   using playerinfo : PlayerInfo,
 }
 
@@ -35,8 +37,13 @@ PlayerInfo :: struct {
   id : ID,
   hp : int,
   ammo : int,
-  name : string,
-  dead : bool,
+  pos : rl.Vector2,
 }
 
-
+UpdatePlayerInfo :: struct {
+  id : ID,
+  moveDIR: i8,
+  viewDir: rl.Vector2,
+  velocity: rl.Vector2,
+  isJumping: bool,
+}
