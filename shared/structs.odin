@@ -32,7 +32,7 @@ NetworkMessage :: struct {
 
 ChatMessage :: struct {
   id : ID,
-  message : string,
+  message : [128]u8, //raw payload
 }
 
 DisconnectMessage :: struct {
@@ -56,7 +56,7 @@ Gamestate :: struct {
 Player :: struct {
 	udpEndpoint:      net.Endpoint,
 	tcpSocket:        net.TCP_Socket,
-	name:             string,
+	// name:             [128]u8,
 	using playerinfo: PlayerInfo,
 }
 
